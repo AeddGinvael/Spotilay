@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+    <PropertyGroup>
+      <TargetFramework>net5.0-windows</TargetFramework>
+      <UseWPF>true</UseWPF>
+	  <UseWindowsForms>true</UseWindowsForms>
+	  <PublishTrimmed>true</PublishTrimmed>
+	  <AssemblyName>Spotilay.Views</AssemblyName>
+	  <RootNamespace>Spotilay.Views</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MaterialDesignExtensions" Version="3.2.0" />
+      <PackageReference Include="MaterialDesignThemes" Version="3.1.3" />
+      <PackageReference Include="NAudio" Version="1.10.0" />
+      <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Spotilay.Lib\Spotilay.Lib.fsproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <EmbeddedResource Include="Resources\favicon.ico" />
+    </ItemGroup>
+	
+
+
+</Project>
