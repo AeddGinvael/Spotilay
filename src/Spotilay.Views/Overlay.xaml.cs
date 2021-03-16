@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,22 +14,21 @@ namespace Spotilay.Views
 {
     public partial class Overlay : Window
     {
-        private readonly Color DeepPurple = Color.FromRgb(103, 58, 183);
+        private readonly Color _deepPurple = Color.FromRgb(103, 58, 183);
         private bool _isClickThrough = true;
         private bool _isDraggable;
-        private List<Control> controls;
-        private Task MouseListenerTask;
-        private CancellationTokenSource Cts = new();
+        private readonly List<Control> _controls;
+
         public Overlay()
         {
             Closing += OnWindowClosing;
-            this.MouseLeftButtonDown += OnMouseLeftButtonDown;
+            MouseLeftButtonDown += OnMouseLeftButtonDown;
             InitializeComponent();
-            controls =  new List<Control>
+            _controls =  new List<Control>
             {
                 NextBtn, StopBtn, PrevBtn, Anchor
             };
-            controls.GetEnumerator();
+            _controls.GetEnumerator();
 
         }
         
@@ -46,7 +44,7 @@ namespace Spotilay.Views
         
         
 
-        private void MouseListenerEvent(object? sender, EventArgs e)
+        private void MouseListenerEvent(object sender, EventArgs e)
         {
             if (_isDraggable)
                 return;
@@ -58,7 +56,7 @@ namespace Spotilay.Views
             var toPoint = transform.Transform(GetMousePosition());
             var mouseInControl = false;
 
-            foreach (var control in controls)
+            foreach (var control in _controls)
             {
 
                 Dispatcher.BeginInvoke(new Action(() =>
@@ -107,13 +105,10 @@ namespace Spotilay.Views
 
         private void OnWindowClosing(object sender, CancelEventArgs e)
         {
-            var data = Common.createData(this.Left, this.Top);
+            var data = Common.createData(Left, Top);
             Common.saveCache(data);
         }
 
-
-
-        
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
             var data = Common.loadCache();
@@ -122,116 +117,31 @@ namespace Spotilay.Views
 
             var handle = new WindowInteropHelper(Application.Current.MainWindow).Handle;
             DllExtern.sendWpfWindowBack(handle);
-            // MouseListenerTask = new Task(MouseListener, Cts.Token,
-            //     TaskCreationOptions.LongRunning);
-            //
-            // MouseListenerTask.Start();
         }
-        
-        public System.Windows.Point GetMousePosition()
+
+        private Point GetMousePosition()
         {
             var point = System.Windows.Forms.Control.MousePosition;
             return new Point(point.X, point.Y);
         }
 
-        private void MouseListener()
-        {
-            while (true)
-            {
-                if (_isDraggable)
-                    continue;
-
-                // var (x, y) = DllExtern.getMousePosition();
-                //
-                Point toPoint;
-                try
-                {
-                    //var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
-                    //var mouse = transform.Transform(GetMousePosition());
-                    var p = Mouse.GetPosition(this);
-                    toPoint = PointToScreen(p);
-                }
-                catch (Exception excp)
-                {
-                    Console.WriteLine(excp);
-                }
-
-                Console.WriteLine($"Point : x = {toPoint.X} - y = {toPoint.Y}");
-                var mouseInControl = false;
-            
-                foreach (var control in controls)
-                {
-                    
-                    Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        // Get control position relative to window
-                        var windowPos = control.TransformToAncestor(this).Transform(new Point(0, 0));
-
-                        var windowRectangle = new Rect
-                        {
-                            X = windowPos.X + Left,
-                            Y = windowPos.Y + Top,
-                            Width = control.Width,
-                            Height = control.Height
-                        };
-                        // Add window position to get global control position
-
-                        // Set control width/height
-
-                        if (windowRectangle.Contains(toPoint))
-                        {
-                            Console.WriteLine($"Mouse in control");
-                            mouseInControl = true;
-                        }
-            
-                        if (mouseInControl && _isClickThrough)
-                        {
-                            Console.WriteLine($"Not clickable");
-                            _isClickThrough = false;
-                            var hwnd = new WindowInteropHelper(this).Handle;
-                            DllExtern.unsetWindowExTransparent(hwnd);
-                        }
-                        else if (!mouseInControl && !_isClickThrough)
-                        {
-                            Console.WriteLine($"Clickable");
-                            _isClickThrough = true;
-            
-                            var hwnd = new WindowInteropHelper(this).Handle;
-                            DllExtern.setWindowExTransparent(hwnd);
-                        }
-                    }));
-                }
-
-                Thread.Sleep(150);
-            }
-        }
-        
-
         private void Anchor_OnClick(object sender, RoutedEventArgs e)
         {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            
             if (_isDraggable)
             {
                 _isDraggable = false;
-                this.Cursor = Cursors.Arrow;
+                Cursor = Cursors.Arrow;
                 Anchor.Foreground = Brushes.DimGray;
-                var hwnd = new WindowInteropHelper(this).Handle;
                 DllExtern.setWindowExTransparent(hwnd);
-                
+                return;
             }
-            else
-            {
-                var hwnd = new WindowInteropHelper(this).Handle;
-                DllExtern.unsetWindowExTransparent(hwnd);
-                Cursor = Cursors.Hand;
-                _isDraggable = true;
-                Anchor.Foreground = new SolidColorBrush(DeepPurple);
-            }
-                
-        }
-
-        private void Overlay_OnUnloaded(object sender, RoutedEventArgs e)
-        {
-            Cts.Cancel();
+            
+            DllExtern.unsetWindowExTransparent(hwnd);
+            Cursor = Cursors.Hand;
+            _isDraggable = true;
+            Anchor.Foreground = new SolidColorBrush(_deepPurple);
         }
     }
 }

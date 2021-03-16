@@ -18,7 +18,6 @@
         Opacity="1" 
         Topmost="True"
         ShowInTaskbar="False"
-        Unloaded="Overlay_OnUnloaded"
 >
     
     <Window.Resources>
