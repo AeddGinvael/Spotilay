@@ -162,10 +162,6 @@ module DllExtern =
         let extendedStyle = GetWindowLong(hwnd, gwlExstyle)
         SetWindowLong(hwnd, gwlExstyle, extendedStyle ||| wsExTransparent)
         
-    let getWindowLong hwbd gwkExstyle = GetWindowLong(hwbd, gwkExstyle)
-    
-    let setWindowLong hwnd gwk value = SetWindowLong(hwnd, gwk, value)
-    
     let unsetWindowExTransparent(hwnd) =
         let extendedStyle = GetWindowLong(hwnd, gwlExstyle)
         SetWindowLong(hwnd, gwlExstyle, extendedStyle &&& ~~~wsExTransparent)
