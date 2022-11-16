@@ -105,11 +105,11 @@ let cutOffStr (str: String) =
         str
         
 let parseTrackName (str: string) =
-    if String.IsNullOrEmpty (str) || str = "Spotify Premium" then
+    if String.IsNullOrEmpty (str) || str = "Spotify Premium" || str = "Spotify Free" then
         unknownTrack
     else
         let arr = str.Split '-'
-        sprintf "%s\n%s" (arr.[1].Trim() |> cutOffStr) (arr.[0].Trim()) 
+        sprintf "%s\n%s" (arr[1].Trim() |> cutOffStr) (arr[0].Trim()) 
 let getCurrentTrackName () =
     let unknownTrack = "Unknown Track"
     let p = getSpotifyProc()

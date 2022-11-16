@@ -3,75 +3,10 @@
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-         xmlns:controls="clr-namespace:MaterialDesignExtensions.Controls;assembly=MaterialDesignExtensions"
-         Title="Spotily"
-         Height="320"
-         Width="500"
          WindowStartupLocation="CenterScreen"
          BorderThickness="0"
          ResizeMode="CanResizeWithGrip"
          mc:Ignorable="d"
-         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-         Background="{DynamicResource MaterialDesignPaper}"
-         TextElement.FontWeight="Medium"
-         TextElement.FontSize="14"
          Unloaded="MainWindow_OnUnloaded"
-         FontFamily="{materialDesign:MaterialDesignFont}">
-  <Window.Resources>
-    <ResourceDictionary>
-      <ResourceDictionary.MergedDictionaries>
-        <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
-        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/MaterialDesignExtensions;component/Themes/Generic.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/MaterialDesignExtensions;component/Themes/MaterialDesignLightTheme.xaml" />
-      </ResourceDictionary.MergedDictionaries>
-    </ResourceDictionary>
-  </Window.Resources>
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
-    <materialDesign:ColorZone Mode="PrimaryMid">
-      <StackPanel Orientation="Horizontal" Margin="2">
-        <RadioButton Style="{StaticResource MaterialDesignTabRadioButton}" x:Name="rbTab1" Margin="4" IsChecked="True" Content="Overlay"/>
-        <RadioButton Style="{StaticResource MaterialDesignTabRadioButton}" x:Name="rbTab2" Margin="4" Content="Settings"/>
-      </StackPanel>
-    </materialDesign:ColorZone>
-    <Border Grid.Row="1" BorderThickness="1 0 1 1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Padding="16">
-      <Grid>
-        <Grid Visibility="{Binding IsChecked, ElementName=rbTab1, Converter={StaticResource BooleanToVisibilityConverter}}">
-          <StackPanel>
-            <Slider
-              Value="50"
-              Width="280"
-              Minimum="0"                    
-              Maximum="100"
-              Style="{StaticResource MaterialDesignDiscreteSlider}"
-              ToolTip="MaterialDesignDiscreteSlider"
-              TickFrequency="2"
-              TickPlacement="BottomRight"/>
-          </StackPanel>
-        </Grid>
-        <Grid Visibility="{Binding IsChecked, ElementName=rbTab2, Converter={StaticResource BooleanToVisibilityConverter}}">
-          <Grid ShowGridLines="True">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="200"></ColumnDefinition>
-              <ColumnDefinition Width="50"></ColumnDefinition>
-            </Grid.ColumnDefinitions>
-
-            <CheckBox Grid.Row="0" Grid.Column="0" x:Name="SpotifyClosedOption" IsChecked="{Binding SetOverlayHideOnClosedSpotify}" HorizontalAlignment="Center" VerticalAlignment="Center">
-              <TextBlock Text="Hide overlay when Spotify is closed" TextWrapping="Wrap" FontSize="16" FontWeight="Medium"/>
-            </CheckBox>
-          </Grid>
-        </Grid>
-        
-      </Grid>
-    </Border>
-  </Grid>
+         >
 </Window>

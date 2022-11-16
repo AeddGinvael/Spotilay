@@ -199,7 +199,7 @@ module OverlayWindow =
     Application.Current.Dispatcher.Invoke(fun () ->
       let ctx = SynchronizationContext.Current
       async {
-       let (model, event) = state
+       let model, event = state
        printfn "%O" event
        return! match event with
                | Playing e -> muteSpotify model true
@@ -330,15 +330,16 @@ module App =
     let dispatchSoundEvent event =
       let updateAudioState = AllMsg.Main <| MainMsg.UpdateAudioSource event
       dispatch updateAudioState
-      
-    let tracker = SoundTracker ()
-    tracker.eventSoundPlaying.Add(fun e -> dispatchSoundEvent e)
-    tracker.eventSoundStopping.Add(fun e -> dispatchSoundEvent e)
-    let fSourceDetect _ =
-      tracker.runDispatcher ()
-    let setTracker = AllMsg.Main <| MainMsg.SetTracker tracker
-    dispatch setTracker
-    createTimer 1000. [| fSourceDetect |] |> startTimer
+      //TODO:: rework
+    // let tracker = SoundTracker ()
+    // tracker.eventSoundPlaying.Add(fun e -> dispatchSoundEvent e)
+    // tracker.eventSoundStopping.Add(fun e -> dispatchSoundEvent e)
+    // let fSourceDetect _ =
+    //   tracker.runDispatcher ()
+    // let setTracker = AllMsg.Main <| MainMsg.SetTracker tracker
+    // dispatch setTracker
+    // createTimer 1000. [| fSourceDetect |] |> startTimer
+    ()
   
 let createOverlayWindow () =
   Spotilay.Views.Overlay(Owner = Application.Current.MainWindow)

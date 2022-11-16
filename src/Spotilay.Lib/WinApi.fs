@@ -155,6 +155,10 @@ module DllExtern =
     let setWindowExTransparent(hwnd) =
         let extendedStyle = GetWindowLong(hwnd, gwlExstyle)
         SetWindowLong(hwnd, gwlExstyle, extendedStyle ||| wsExTransparent)
+        
+    let getWindowLong hwbd gwkExstyle = GetWindowLong(hwbd, gwkExstyle)
+    
+    let setWindowLong hwnd gwk value = SetWindowLong(hwnd, gwk, value)
     
     let unsetWindowExTransparent(hwnd) =
         let extendedStyle = GetWindowLong(hwnd, gwlExstyle)
@@ -296,23 +300,28 @@ module DllExtern =
 module ProcessEvents =
     
     let watchEventProcess dispatcherOnSpotify =
-        let startProcesses = WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace")
-        let endProcesses = WqlEventQuery("SELECT * FROM Win32_ProcessStopTrace")
+        let startProcesses = WqlEventQuery("SELECT * FROM __InstanceCreationEvent WITHIN 1
+                     WHERE TargetInstance ISA 'Win32_Process'")
+        let endProcesses = WqlEventQuery("SELECT * FROM __InstanceDeletionEvent WITHIN 1
+                     WHERE TargetInstance ISA 'Win32_Process'")
         let startWatcher = new ManagementEventWatcher(startProcesses)
         let stopWatcher = new ManagementEventWatcher(endProcesses)
         let f (args: EventArrivedEventArgs) =
-            let procName = args.NewEvent.Properties.["ProcessName"].Value.ToString()
+            let managementObj = args.NewEvent.Properties["TargetInstance"].Value :?> ManagementBaseObject
+            let procName = managementObj.Properties["Caption"].Value.ToString()
             if procName = "Spotify.exe" then
                 dispatcherOnSpotify()
             
         let f2 (args: EventArrivedEventArgs) =
-            let procName = args.NewEvent.Properties.["ProcessName"].Value.ToString()
+            let managementObj = args.NewEvent.Properties["TargetInstance"].Value :?> ManagementBaseObject
+            let procName = managementObj.Properties["Caption"].Value.ToString()
             if procName = "Spotify.exe" then
                 dispatcherOnSpotify()
         
         startWatcher.EventArrived.Add(f)
         stopWatcher.EventArrived.Add(f2)
-        stopWatcher.Start()
+        
         startWatcher.Start()
+        stopWatcher.Start()
     
     

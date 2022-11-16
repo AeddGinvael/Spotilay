@@ -22,9 +22,9 @@ namespace Spotilay.Views
         public MainWindow()
         {
             InitializeComponent();
-            WindowStartupLocation = WindowStartupLocation.Manual;
-            Left = -1000;
-            Top = -1000;
+            WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            // Left = -1000;
+            // Top = -1000;
             ShowInTaskbar = false;
             var contextMenu = CreateContextMenu();
             var tray = CreateTrayIcon(contextMenu);
@@ -42,19 +42,12 @@ namespace Spotilay.Views
         private ContextMenuStrip CreateContextMenu()
         {
             var contextMenu = new ContextMenuStrip();
-
-            contextMenu.Items.Add("Show", null, (sender, args) =>
-            {
-                Show();
-                _trayIcon.Visible = false;
-            });
-
             contextMenu.Items.Add("Exit", null, (sender, args) =>
             {
-                Application.Current.Shutdown();
                 _trayIcon.Visible = false;
                 _trayIcon.Dispose();
                 _trayIcon = null;
+                Application.Current.Shutdown();
             });
             return contextMenu;
         }
@@ -112,9 +105,9 @@ namespace Spotilay.Views
         private static void HideMinimizeAndMaximizeButtons(Window window)
         {
             var hwnd = new WindowInteropHelper(window).Handle;
-            var style = DllExtern.GetWindowLong(hwnd, DllExtern.gwlStyle);
+            var style = DllExtern.getWindowLong(hwnd, DllExtern.gwlStyle);
             var value = style & ~DllExtern.wsMaximizebox & ~DllExtern.wsMinimizebox;
-            DllExtern.SetWindowLong(hwnd, DllExtern.gwlStyle, value);
+            DllExtern.setWindowLong(hwnd, DllExtern.gwlStyle, value);
         }
         
         
