@@ -55,8 +55,11 @@ module DllExtern =
     
     [<SuppressUnmanagedCodeSecurity>]
     [<DllImport("user32.dll")>]
-    extern int SetWindowLong (IntPtr hwnd, int index, int newStlye)
-
+    extern int SetWindowLong (IntPtr hwnd, int index, int newStyle)
+    
+    [<DllImport("gdi32.dll", SetLastError=true)>]
+    extern bool DeleteObject(IntPtr hObj)
+    
     [<SuppressUnmanagedCodeSecurity>]
     [<DllImport("user32.dll")>]
     extern bool SetWindowPos (IntPtr hwnd, IntPtr hwndInsertAfter, int x, int y, int cx, int cy, uint32 flags)
@@ -140,6 +143,9 @@ module DllExtern =
     [<DllImport("user32.dll")>]    
     extern bool EnumWindows (EnumWindowsProc enumF, IntPtr lparam)     
 
+    let deleteObject obj = DeleteObject(obj)
+    let getWindowLong (hwnd, index) = GetWindowLong(hwnd, index)
+    let setWindowLong (hwnd, index, newStyle) = SetWindowLong (hwnd, index, newStyle)
     let getInternetStatus () =
         InternetGetConnectedState(0, 0)
 

@@ -1,7 +1,6 @@
 module SpotifyControls
 
 open System
-open System.Reflection
 open WinApi
 
 // IntPtr.Zero means spotify does not exist or not found
@@ -23,23 +22,17 @@ let intPtrToBool intPtr =
 
 let tryPause hwnd =
     async {
-//      do! Async.SwitchToThreadPool() 
-//      let! handle = getSpotifyHandle ()
       return hwnd |> DllExtern.sendPlayPause |> intPtrToBool
     }
    
 let tryNext hwnd =
     async {
-//        do! Async.SwitchToThreadPool() 
-//        let! handle = getSpotifyHandle ()
         return hwnd |> DllExtern.sendNextTrack |> intPtrToBool
     }
 
 
 let tryPrev hwnd =
     async {
-//        do! Async.SwitchToThreadPool() 
-//        let! handle = getSpotifyHandle ()
         return hwnd |> DllExtern.sendPrevTrack |> intPtrToBool
     }
     
@@ -58,9 +51,3 @@ let tryVolumeDown () =
         return handle |> DllExtern.sendVolumeDown |> intPtrToBool
     }
 
-
-let getType obj =
-    obj.GetType ()
-    
-let getMethods (objType: Type) =
-    objType.GetMethods()

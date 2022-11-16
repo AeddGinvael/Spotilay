@@ -108,7 +108,7 @@ module OverlayWindow =
     "Stop"        |> Binding.cmd (Stop |> wrapAsMsg)
     "Prev"        |> Binding.cmd (PrevTrack |> wrapAsMsg)
     "Next"        |> Binding.cmd (NextTrack |> wrapAsMsg)
-    "StopBtnKind" |> Binding.oneWay (fun m -> bindStopBtn m)
+    "StopBtnKind" |> Binding.oneWay (bindStopBtn)
     "TrackName"   |> Binding.oneWay (fun m -> m.OverlayState.CurrTrackName)
   ]
   
@@ -182,17 +182,14 @@ module OverlayWindow =
              let! _ = tryPause model.SpotifyHandle
              return AllMsg.Main <| MainMsg.SetMuteOnAudioSource false
            }
-         | (false, false) -> async {return AllMsg.Nothing}
-         | (_, true) -> async {return AllMsg.Nothing}
+         | (_, _) -> async {return AllMsg.Nothing}
       | false ->
         match (playing, muted) with
         | (false, true) -> async {
             let! _ = tryPause model.SpotifyHandle
             return AllMsg.Main <| MainMsg.SetMuteOnAudioSource false         
           }
-        | (false, false) -> async {return AllMsg.Nothing}
-        | (_, true) -> async {return AllMsg.Nothing}
-        | (true, false) -> async {return AllMsg.Nothing}
+        | (_, _) -> async {return AllMsg.Nothing}
 
 
   let audioSource (state: (Model * SoundEvent)) =

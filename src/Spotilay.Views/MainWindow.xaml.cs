@@ -77,12 +77,6 @@ namespace Spotilay.Views
 
             return trayNotifyIcon;
         }
-
-
-        //TODO:: move to dllextern
-        [DllImport("gdi32.dll", SetLastError = true)]
-        private static extern bool DeleteObject(IntPtr hObject);
-
         private static ImageSource ToImageSource(Icon icon)
         {            
             var bitmap = icon.ToBitmap();
@@ -94,7 +88,7 @@ namespace Spotilay.Views
                 Int32Rect.Empty,
                 BitmapSizeOptions.FromEmptyOptions());
 
-            if (!DeleteObject(hBitmap))
+            if (!DllExtern.deleteObject(hBitmap))
             {
                 throw new Win32Exception();
             }
