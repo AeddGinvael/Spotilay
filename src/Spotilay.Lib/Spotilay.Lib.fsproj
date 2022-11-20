@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0-windows</TargetFramework>
+        <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -15,6 +16,7 @@
       <PackageReference Include="NAudio" Version="1.10.0" />
       <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
       <PackageReference Include="System.Management" Version="7.0.0" />
+      <PackageReference Update="FSharp.Core" Version="7.0.0" />
     </ItemGroup>
 
 </Project>

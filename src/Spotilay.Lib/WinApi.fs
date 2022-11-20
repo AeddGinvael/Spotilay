@@ -308,20 +308,20 @@ module ProcessEvents =
                      WHERE TargetInstance ISA 'Win32_Process'")
         let startWatcher = new ManagementEventWatcher(startProcesses)
         let stopWatcher = new ManagementEventWatcher(endProcesses)
-        let f (args: EventArrivedEventArgs) =
+        let onProcessSpawned (args: EventArrivedEventArgs) =
             let managementObj = args.NewEvent.Properties["TargetInstance"].Value :?> ManagementBaseObject
             let procName = managementObj.Properties["Caption"].Value.ToString()
             if procName = "Spotify.exe" then
                 dispatcherOnSpotify()
             
-        let f2 (args: EventArrivedEventArgs) =
+        let onProcessExited (args: EventArrivedEventArgs) =
             let managementObj = args.NewEvent.Properties["TargetInstance"].Value :?> ManagementBaseObject
             let procName = managementObj.Properties["Caption"].Value.ToString()
             if procName = "Spotify.exe" then
                 dispatcherOnSpotify()
         
-        startWatcher.EventArrived.Add(f)
-        stopWatcher.EventArrived.Add(f2)
+        startWatcher.EventArrived.Add(onProcessSpawned)
+        stopWatcher.EventArrived.Add(onProcessExited)
         
         startWatcher.Start()
         stopWatcher.Start()

@@ -30,11 +30,9 @@ module Types =
   | HideOverlay
   | CloseOverlay
   | ExitApp
-  | ClosedOption of bool
   | SetTracker of SoundTracker
   | SettingsDispatch
   | UpdateAudioSource of SoundEvent
-  | SetMuteOnAudioSource of bool
   | Fail of exn
   | Next
    
@@ -45,17 +43,10 @@ module Types =
   }
   
   [<Struct>]
-  type Settings = {
-      SpotifyClosedOption : bool
-      IsSpotifyMuted      : bool
-  }
-  
-  [<Struct>]
   type Model =
     {
       OverlayWindow : WindowState<string>
       OverlayState  : OverlayModel
-      AppSettings   : Settings
       SpotifyHandle : IntPtr
       Tracker       : SoundTracker option
     }
@@ -81,7 +72,7 @@ module OverlayWindow =
   let init () =
       {
         IsTrackPlaying = false
-        CurrTrackName = "Unknown Track"
+        CurrTrackName = unknownTrack
       }
   
   let update (msg: OverlayMsg) (m: Model) =
@@ -167,56 +158,49 @@ module OverlayWindow =
       }
     )
     
-  let muteSpotify (model: Model) status = 
-      let playing = model.OverlayState.IsTrackPlaying
-      let muted = model.AppSettings.IsSpotifyMuted
+  let muteSpotify = 
+      let mutable muted = false
       
-      match status with
-      | true ->
-         match (playing, muted) with
-         | (true, false) -> async {
-             let! _ = tryPause model.SpotifyHandle
-             return AllMsg.Main <| MainMsg.SetMuteOnAudioSource true
-           }
-         | (false, true) -> async {
-             let! _ = tryPause model.SpotifyHandle
-             return AllMsg.Main <| MainMsg.SetMuteOnAudioSource false
-           }
-         | (_, _) -> async {return AllMsg.Nothing}
-      | false ->
-        match (playing, muted) with
-        | (false, true) -> async {
-            let! _ = tryPause model.SpotifyHandle
-            return AllMsg.Main <| MainMsg.SetMuteOnAudioSource false         
-          }
-        | (_, _) -> async {return AllMsg.Nothing}
-
+      let cached (model: Model) isSounding  =
+          let trackPlaying = model.OverlayState.IsTrackPlaying
+          match muted, isSounding with
+          | true, true  -> async { return AllMsg.Nothing }
+          | false, true -> async {
+              if trackPlaying then
+                let! _ = tryPause model.SpotifyHandle
+                muted <- true
+              return AllMsg.Nothing
+            }
+          | false, false -> async { return AllMsg.Nothing }
+          | true, false -> async {
+              if not trackPlaying then
+                let! _ = tryPause model.SpotifyHandle
+                muted <- false
+              return AllMsg.Nothing
+            }
+          
+      cached
 
   let audioSource (state: (Model * SoundEvent)) =
     Application.Current.Dispatcher.Invoke(fun () ->
       let ctx = SynchronizationContext.Current
       async {
        let model, event = state
-       printfn "%O" event
        return! match event with
-               | Playing e -> muteSpotify model true
-               | Stopping e -> muteSpotify model false
+               | Sound e -> muteSpotify model true
+               | Silence e -> muteSpotify model false
        }
       )
 
   let settingsDispatch (model: Model) =
-    async {
-      let isSpotifyRunnin = isSpotifyRunning()
-      let modelClosedOption =
-        match (isSpotifyRunnin, model.AppSettings.SpotifyClosedOption) with
-        | (true, true) ->  { model with OverlayWindow = WindowState.Visible "" }
-        | (false, true) -> { model with OverlayWindow = WindowState.Hidden "" }
-        | (false, false) -> { model with OverlayWindow = WindowState.Visible "" }
-        | (_, _) -> model
-        
-      let update = AllMsg.Update modelClosedOption
-      return update
-    }
+    let isSpotifyRunnin = isSpotifyRunning model.SpotifyHandle
+    let modelClosedOption =
+      match isSpotifyRunnin with
+      | true ->  { model with OverlayWindow = WindowState.Visible "" }
+      | false -> { model with OverlayWindow = WindowState.Hidden "" }
+      
+    let update = AllMsg.Update modelClosedOption
+    update
    
   let spotifyHandleHwnd (model: Model) =
     Application.Current.Dispatcher.Invoke(fun () ->
@@ -238,30 +222,21 @@ module App =
     { OverlayWindow = WindowState.Closed
       OverlayState = init()
       SpotifyHandle = IntPtr.Zero
-      AppSettings = {
-        SpotifyClosedOption = false
-        IsSpotifyMuted = false
-      }
       Tracker = None
        },
     []
-        
   let updateMain msg m =
     match msg with
     | Next -> m, []
     | ShowOverlay -> { m with OverlayWindow = WindowState.Visible "" }, []
     | HideOverlay -> { m with OverlayWindow = WindowState.Hidden "" }, []
     | CloseOverlay -> { m with OverlayWindow = WindowState.Closed }, []
-    | ClosedOption b -> { m with AppSettings =
-                                 { m.AppSettings with SpotifyClosedOption = b}}, []
     | ExitApp ->
       Application.Current.Shutdown()
       m, []
     | SettingsDispatch -> m, [ OverlayCmd.SettingsDispatchCmd m]
     | SetTracker s -> { m with Tracker = Some s }, []
     | MainMsg.UpdateAudioSource soundEvent -> m, [ OverlayCmd.UpdateAudioSource (m, soundEvent)]
-    | MainMsg.SetMuteOnAudioSource flag -> { m with AppSettings =
-                                                     { m.AppSettings with IsSpotifyMuted = flag }}, []
     | MainMsg.Fail exn -> m, []
   
   let update (msg: AllMsg) m =
@@ -272,21 +247,19 @@ module App =
     | AllMsg.Fail exn -> m, []
     | AllMsg.Update model -> model, []
   
-  let closedMapf = fun a -> (AllMsg.Main (MainMsg.ClosedOption a))
   let mainBindings (createOverlay: unit -> #Window) () : Binding<Model, AllMsg> list = [
     "ShowOverlay"  |> Binding.cmd (AllMsg.Main MainMsg.ShowOverlay)
     "HideOverlay"  |> Binding.cmd (AllMsg.Main MainMsg.HideOverlay)
     "CloseOverlay" |> Binding.cmd (AllMsg.Main MainMsg.CloseOverlay)
     "Exit"         |> Binding.cmd (AllMsg.Main MainMsg.ExitApp)
     "Overlay"      |> Binding.subModelWin( (fun m -> m.OverlayWindow), fst, id, bindings, createOverlay)
-    
-    "SetOverlayHideOnClosedSpotify" |> Binding.twoWay ( (fun m -> m.AppSettings.SpotifyClosedOption), closedMapf)
   ]
   
 
   let exit () =
     Application.Current.Shutdown()
     
+  let updateFunc f m = Cmd.OfFunc.either f m id AllMsg.Fail
   let asFunc f = Cmd.OfFunc.either f () id AllMsg.Fail
   let asAsync f a = Cmd.OfAsync.either f a id AllMsg.Fail
 
@@ -294,7 +267,7 @@ module App =
   | OverlayCmd.NextCmd             model -> asAsync next model 
   | OverlayCmd.PrevCmd             model -> asAsync prev model
   | OverlayCmd.PauseCmd            model -> asAsync pause model
-  | OverlayCmd.SettingsDispatchCmd model -> asAsync settingsDispatch model
+  | OverlayCmd.SettingsDispatchCmd model -> updateFunc settingsDispatch model
   | OverlayCmd.UpdateAudioSource   event -> Cmd.OfAsync.either audioSource event id AllMsg.Fail
   | OverlayCmd.SetTrackCmd         model -> asAsync setTrack model
   | OverlayCmd.SetTrackPlayingCmd  model -> asAsync setTrackPlaying model
@@ -303,7 +276,7 @@ module App =
   
   let settingDispatcher (dispatch : Dispatch<AllMsg>) =
     let f _ = dispatch (AllMsg.Main SettingsDispatch)
-    createTimer 1000. [| f |] |> startTimer
+    createTimer 2000. [| f |] |> startTimer
   
   let spotifyStateDispatcher (dispatch : Dispatch<AllMsg>) =
 
@@ -328,14 +301,14 @@ module App =
       let updateAudioState = AllMsg.Main <| MainMsg.UpdateAudioSource event
       dispatch updateAudioState
       //TODO:: rework
-    // let tracker = SoundTracker ()
-    // tracker.eventSoundPlaying.Add(fun e -> dispatchSoundEvent e)
-    // tracker.eventSoundStopping.Add(fun e -> dispatchSoundEvent e)
-    // let fSourceDetect _ =
-    //   tracker.runDispatcher ()
-    // let setTracker = AllMsg.Main <| MainMsg.SetTracker tracker
-    // dispatch setTracker
-    // createTimer 1000. [| fSourceDetect |] |> startTimer
+    let tracker = SoundTracker ()
+    tracker.eventSoundPlaying.Add(dispatchSoundEvent)
+    tracker.eventSoundStopping.Add(dispatchSoundEvent)
+    let fSourceDetect _ =
+      tracker.runDispatcher ()
+    let setTracker = AllMsg.Main <| MainMsg.SetTracker tracker
+    dispatch setTracker
+    createTimer 1000. [| fSourceDetect |] |> startTimer
     ()
   
 let createOverlayWindow () =
@@ -353,18 +326,13 @@ let dispatchers _ =
     ] 
 
 
-// Same as Program.runWindowWithConfig but not showing window
-let runApp config window program =
-  Application () |> ignore
-  Application.Current.MainWindow <- window
-  Program.startElmishLoop config window program
-  Application.Current.Run window
-
 [<EntryPoint; STAThread>]
 let main _ =
+  //TODO::
+  //one single instance of app
+  //logging
   let win = Spotilay.Views.MainWindow()
   let bindings = App.mainBindings createOverlayWindow
   Program.mkProgramWpfWithCmdMsg App.init App.update bindings App.toCmd
   |> Program.withSubscription dispatchers
-  |> Program.withDebugTrace
   |> Program.runWindowWithConfig ElmConfig.Default win

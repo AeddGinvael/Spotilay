@@ -49,12 +49,14 @@ let loadDeviceState () =
         json
     else
         ""
-   
-let isSpotifyRunning () =
-    let processes = Process.GetProcessesByName("Spotify")
-    let runningCount = processes.Length = 0 |> not
-    processes |> Array.iter DllExtern.disposeProc
-    runningCount
+
+//TODO:: already listening for events of process. such code is uselss
+let isSpotifyRunning handle =
+    handle = IntPtr.Zero |> not
+    // let processes = Process.GetProcessesByName("Spotify")
+    // let runningCount = processes.Length = 0 |> not
+    // processes |> Array.iter DllExtern.disposeProc
+    // runningCount
     
 let getSpotifyProc () =
     let proc = Process.GetProcessesByName("Spotify")
@@ -70,8 +72,9 @@ let iterateProc () =
     let proc = Process.GetProcessesByName("Spotify") |> Array.map (fun proc -> DllExtern.getWindowText <| proc.MainWindowHandle)
     proc
     
+//TODO:: use GlobalSystemMediaTransportControlsSessionManager for better track handling
 let isTrackNameValid text =
-    if String.IsNullOrEmpty (text) || text = "Spotify Premium"  then
+    if String.IsNullOrEmpty (text) || text = "Spotify Premium" || text = "Spotify Free" then
         false
     else
         true
@@ -95,7 +98,7 @@ let isTrackPlaying hwnd = async {
 
     
 let private maxLenOfTrackName = 24
-let unknownTrack = "Unknown Track"
+let unknownTrack = "N\A"
 
 let cutOffStr (str: String) =
     if str.Length > maxLenOfTrackName then

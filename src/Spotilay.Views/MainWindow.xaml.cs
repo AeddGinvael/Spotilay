@@ -22,9 +22,11 @@ namespace Spotilay.Views
         public MainWindow()
         {
             InitializeComponent();
-            WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            // Left = -1000;
-            // Top = -1000;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = -1000;
+            Top = -1000;
+            Visibility = Visibility.Hidden;
+            Hide();
             ShowInTaskbar = false;
             var contextMenu = CreateContextMenu();
             var tray = CreateTrayIcon(contextMenu);
