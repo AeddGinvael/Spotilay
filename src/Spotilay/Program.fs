@@ -42,6 +42,14 @@ module Types =
       CurrTrackName   : string
   }
   
+  type Config = {
+    MuteOnSoundSource: string []
+  }
+  
+  let defaultConfig = {
+    MuteOnSoundSource = [||]
+  }
+  
   [<Struct>]
   type Model =
     {
@@ -49,7 +57,9 @@ module Types =
       OverlayState  : OverlayModel
       SpotifyHandle : IntPtr
       Tracker       : SoundTracker option
+      Config        : Config
     }
+    
     
   type AllMsg =
   | Main of MainMsg
@@ -223,6 +233,7 @@ module App =
       OverlayState = init()
       SpotifyHandle = IntPtr.Zero
       Tracker = None
+      Config = { MuteOnSoundSource = [||] }
        },
     []
   let updateMain msg m =
@@ -296,16 +307,15 @@ module App =
     
   
 
-  let soundSourceDetectDispatcher (dispatch : Dispatch<AllMsg>) =
+  let soundSourceDetectDispatcher model (dispatch : Dispatch<AllMsg>) =
     let dispatchSoundEvent event =
       let updateAudioState = AllMsg.Main <| MainMsg.UpdateAudioSource event
       dispatch updateAudioState
-      //TODO:: rework
-    let tracker = SoundTracker ()
+    let tracker = SoundTracker model.Config.MuteOnSoundSource
     tracker.eventSoundPlaying.Add(dispatchSoundEvent)
     tracker.eventSoundStopping.Add(dispatchSoundEvent)
     let fSourceDetect _ =
-      tracker.runDispatcher ()
+      tracker.updateState ()
     let setTracker = AllMsg.Main <| MainMsg.SetTracker tracker
     dispatch setTracker
     createTimer 1000. [| fSourceDetect |] |> startTimer
@@ -318,11 +328,11 @@ let binding = App.mainBindings createOverlayWindow ()
 let mainDesignVm = ViewModel.designInstance (App.init () |> fst) binding
 let overlayDesignVm = ViewModel.designInstance (App.init () |> fst) (OverlayWindow.bindings ())
 
-let dispatchers _ =
+let dispatchers model _ =
   Cmd.batch [
     Cmd.ofSub App.spotifyStateDispatcher
     Cmd.ofSub App.settingDispatcher
-    Cmd.ofSub App.soundSourceDetectDispatcher
+    Cmd.ofSub (App.soundSourceDetectDispatcher model)
     ] 
 
 
@@ -331,8 +341,11 @@ let main _ =
   //TODO::
   //one single instance of app
   //logging
+  let config = loadConfig<Config> defaultConfig
+  let model, lst = App.init ()
+  let initialModel = {  model with Config = config} 
   let win = Spotilay.Views.MainWindow()
   let bindings = App.mainBindings createOverlayWindow
-  Program.mkProgramWpfWithCmdMsg App.init App.update bindings App.toCmd
-  |> Program.withSubscription dispatchers
+  Program.mkProgramWpfWithCmdMsg (fun () -> initialModel, lst) App.update bindings App.toCmd
+  |> Program.withSubscription (dispatchers initialModel)
   |> Program.runWindowWithConfig ElmConfig.Default win

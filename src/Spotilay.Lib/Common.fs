@@ -12,12 +12,11 @@ type CacheData = {
 }
 
 let private cacheFilePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-let private fileName = "spotilay_cache.json"
-let private cacheFileFinalPath = Path.Combine(cacheFilePath, fileName)
+let private configFileName = "config.json"
+let private configFilePath = Path.Combine(cacheFilePath, configFileName)
 let private deviceStateFilePath = Path.Combine(cacheFilePath, "device_state.json")
 
 let createData left top = { Left = left; Top = top }
-
 
 let createTimer time dispatchers =
     let timer = new System.Timers.Timer(time)
@@ -29,15 +28,17 @@ let startTimer (timer: System.Timers.Timer) = timer.Start()
 
 let saveCache cache =
     let json = JsonConvert.SerializeObject(cache)
-    File.WriteAllText(cacheFileFinalPath, json)
+    File.WriteAllText(configFilePath, json)
     
     
-let loadCache () =
-    if File.Exists(cacheFileFinalPath) then
-        let json = File.ReadAllText(cacheFileFinalPath)
-        JsonConvert.DeserializeObject<CacheData>(json)
+let loadConfig<'a> emptyConfig =
+    if File.Exists(configFilePath) then
+        let json = File.ReadAllText(configFilePath)
+        JsonConvert.DeserializeObject<'a>(json)
     else
-        { Left = 0.0; Top = 0.0 }
+        File.WriteAllText(configFilePath, JsonConvert.SerializeObject(emptyConfig))
+        emptyConfig
+        
         
 let saveDeviceState devices =
     let json = JsonConvert.SerializeObject(devices)

@@ -111,9 +111,9 @@ namespace Spotilay.Views
 
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
-            var data = Common.loadCache();
-            Left = data.Left;
-            Top = data.Top;
+            // var data = Common.loadConfig();
+            // Left = data.Left;
+            // Top = data.Top;
 
             var handle = new WindowInteropHelper(Application.Current.MainWindow).Handle;
             DllExtern.sendWpfWindowBack(handle);

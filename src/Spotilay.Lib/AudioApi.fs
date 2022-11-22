@@ -15,7 +15,6 @@ module AudioApi
         Pid             : uint
         StartedTime     : DateTime
     }
-    // DateTime is UtcNow
     [<Struct>]
     type SoundEvent =
     | Sound of sound: (string * DateTime) 
@@ -58,9 +57,10 @@ module AudioApi
     
     let filterSessions lst = lst |> List.filter (fun x -> x.RawVolume > 0.000001)
     
-    type SoundTracker () =
+    type SoundTracker (trackingSession: string[]) =
         
-        let mutable sessionsMap = Dictionary<string, List<SoundSource>>()
+        let trackingSessionSet: HashSet<string> = trackingSession.ToHashSet()
+        let sessionsMap = Dictionary<string, List<SoundSource>>()
         let onSoundPlaying = Event<_> ()
         let onSoundStopping = Event<_> ()
         
@@ -72,7 +72,7 @@ module AudioApi
             ses
             |> List.filter isFit
             |> List.map mapSession
-            |> List.filter (fun x -> x.Identifier <> "Spotify.exe")
+            |> List.filter (fun x -> trackingSessionSet.Contains(x.Identifier, StringComparer.CurrentCultureIgnoreCase))
 
         member private this.updateSession (key, lst: SoundSource list) =
             match sessionsMap.TryGetValue key with
@@ -92,7 +92,7 @@ module AudioApi
             sessionsMap
             |> Seq.tryFind (fun i -> isActiveSession i.Value)
             
-        member this.runDispatcher () =
+        member this.updateState () =
             this.update()
             let flag = this.isThereActiveSession()
             match flag with

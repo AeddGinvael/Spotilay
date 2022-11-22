@@ -7,7 +7,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	<OutputType>WinExe</OutputType>
 	<LangVersion>latestmajor</LangVersion>
-    <PublishSingleFile>true</PublishSingleFile>
+<!--    <PublishSingleFile>true</PublishSingleFile>-->
     <SelfContained>true</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
