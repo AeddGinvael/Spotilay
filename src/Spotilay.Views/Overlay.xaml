@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         Title="Overlay"
         Loaded="MainWindow_OnLoaded"
+        Unloaded="Overlay_OnUnloaded"
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="NoResize"

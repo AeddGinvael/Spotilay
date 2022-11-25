@@ -109,7 +109,7 @@ module OverlayWindow =
     "Stop"        |> Binding.cmd (Stop |> wrapAsMsg)
     "Prev"        |> Binding.cmd (PrevTrack |> wrapAsMsg)
     "Next"        |> Binding.cmd (NextTrack |> wrapAsMsg)
-    "StopBtnKind" |> Binding.oneWay (bindStopBtn)
+    "StopBtnKind" |> Binding.oneWay bindStopBtn
     "TrackName"   |> Binding.oneWay (fun m -> m.OverlayState.CurrTrackName)
   ]
   
@@ -258,14 +258,6 @@ module App =
     | AllMsg.Fail exn -> m, []
     | AllMsg.Update model -> model, []
   
-  let mainBindings (createOverlay: unit -> #Window) () : Binding<Model, AllMsg> list = [
-    "ShowOverlay"  |> Binding.cmd (AllMsg.Main MainMsg.ShowOverlay)
-    "HideOverlay"  |> Binding.cmd (AllMsg.Main MainMsg.HideOverlay)
-    "CloseOverlay" |> Binding.cmd (AllMsg.Main MainMsg.CloseOverlay)
-    "Exit"         |> Binding.cmd (AllMsg.Main MainMsg.ExitApp)
-    "Overlay"      |> Binding.subModelWin( (fun m -> m.OverlayWindow), fst, id, bindings, createOverlay)
-  ]
-  
 
   let exit () =
     Application.Current.Shutdown()
@@ -286,24 +278,23 @@ module App =
   
   
   let settingDispatcher (dispatch : Dispatch<AllMsg>) =
-    let f _ = dispatch (AllMsg.Main SettingsDispatch)
-    createTimer 2000. [| f |] |> startTimer
+    let settingsDispatch _ = dispatch (AllMsg.Main SettingsDispatch)
+    createTimer 2000. [| settingsDispatch |] |> startTimer
   
   let spotifyStateDispatcher (dispatch : Dispatch<AllMsg>) =
 
-    let fProcState _ =
+    //TODO:: use in one timera
+    let setTrackPlaying _ =
         let setProcTrack = AllMsg.Overlay OverlayMsg.SetTrackPlaying
         dispatch setProcTrack
-    let fTrack _ =
+    let setTrack _ =
         let setTrack = AllMsg.Overlay OverlayMsg.SetTrack
         dispatch setTrack
       
-    let call = AllMsg.Overlay OverlayMsg.CallSpotifyGetHandle
-    dispatch call
+    dispatch (AllMsg.Overlay OverlayMsg.CallSpotifyGetHandle)
     ProcessEvents.watchEventProcess (fun () -> dispatch (AllMsg.Overlay OverlayMsg.CallSpotifyGetHandle))
-    let showOverlay = AllMsg.Main MainMsg.ShowOverlay
-    dispatch showOverlay
-    createTimer 1000. [| fProcState; fTrack;  |] |> startTimer
+    dispatch (AllMsg.Main MainMsg.ShowOverlay)
+    createTimer 1000. [|  setTrackPlaying; setTrack;  |] |> startTimer
     
   
 
@@ -321,12 +312,7 @@ module App =
     createTimer 1000. [| fSourceDetect |] |> startTimer
     ()
   
-let createOverlayWindow () =
-  Spotilay.Views.Overlay(Owner = Application.Current.MainWindow)
 
-let binding = App.mainBindings createOverlayWindow ()
-let mainDesignVm = ViewModel.designInstance (App.init () |> fst) binding
-let overlayDesignVm = ViewModel.designInstance (App.init () |> fst) (OverlayWindow.bindings ())
 
 let dispatchers model _ =
   Cmd.batch [
@@ -336,16 +322,21 @@ let dispatchers model _ =
     ] 
 
 
+let mutexId = "Local\\0D993C99-AD24-4BBC-9D5E-66B8BA608119"
+
 [<EntryPoint; STAThread>]
 let main _ =
+  
   //TODO::
-  //one single instance of app
   //logging
+  use mutex = new Mutex(false, mutexId)
+  if not (mutex.WaitOne(TimeSpan.Zero)) then
+    failwith "Spotilay already running"
+  
   let config = loadConfig<Config> defaultConfig
   let model, lst = App.init ()
   let initialModel = {  model with Config = config} 
-  let win = Spotilay.Views.MainWindow()
-  let bindings = App.mainBindings createOverlayWindow
-  Program.mkProgramWpfWithCmdMsg (fun () -> initialModel, lst) App.update bindings App.toCmd
+  let win = Spotilay.Views.Overlay()
+  Program.mkProgramWpfWithCmdMsg (fun () -> initialModel, lst) App.update OverlayWindow.bindings App.toCmd
   |> Program.withSubscription (dispatchers initialModel)
   |> Program.runWindowWithConfig ElmConfig.Default win

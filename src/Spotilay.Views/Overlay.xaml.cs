@@ -1,14 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WinApi;
+using Application = System.Windows.Application;
+using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
+using Control = System.Windows.Controls.Control;
+using Cursors = System.Windows.Input.Cursors;
+using Point = System.Windows.Point;
 
 namespace Spotilay.Views
 {
@@ -18,20 +28,29 @@ namespace Spotilay.Views
         private bool _isClickThrough = true;
         private bool _isDraggable;
         private readonly List<Control> _controls;
+        private NotifyIcon _trayIcon;
+
 
         public Overlay()
         {
+            InitializeComponent();
+            
             Closing += OnWindowClosing;
             MouseLeftButtonDown += OnMouseLeftButtonDown;
-            InitializeComponent();
-            _controls =  new List<Control>
+            var contextMenu = CreateContextMenu();
+            var tray = CreateTrayIcon(contextMenu);
+            _trayIcon = tray;
+            _trayIcon.Visible = true;
+            _controls = new List<Control>
             {
                 NextBtn, StopBtn, PrevBtn, Anchor
             };
-            _controls.GetEnumerator();
 
+
+            Show();
         }
-        
+
+
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
@@ -42,13 +61,10 @@ namespace Spotilay.Views
             DllExtern.setWindowExTransparent(hwnd);
         }
         
-        
-
         private void MouseListenerEvent(object sender, EventArgs e)
         {
             if (_isDraggable)
                 return;
-
 
             var compositionTarget = PresentationSource.FromVisual(this)?.CompositionTarget;
             if (compositionTarget == null) return;
@@ -89,6 +105,7 @@ namespace Spotilay.Views
                     else if (!mouseInControl && !_isClickThrough)
                     {
                         _isClickThrough = true;
+                        //TODO:: Cache
                         var hwnd = new WindowInteropHelper(this).Handle;
                         DllExtern.setWindowExTransparent(hwnd);
                     }
@@ -105,18 +122,11 @@ namespace Spotilay.Views
 
         private void OnWindowClosing(object sender, CancelEventArgs e)
         {
-            var data = Common.createData(Left, Top);
-            Common.saveCache(data);
         }
 
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
-            // var data = Common.loadConfig();
-            // Left = data.Left;
-            // Top = data.Top;
-
-            var handle = new WindowInteropHelper(Application.Current.MainWindow).Handle;
-            DllExtern.sendWpfWindowBack(handle);
+            var handle = new WindowInteropHelper(this).Handle;
         }
 
         private Point GetMousePosition()
@@ -142,6 +152,61 @@ namespace Spotilay.Views
             Cursor = Cursors.Hand;
             _isDraggable = true;
             Anchor.Foreground = new SolidColorBrush(_deepPurple);
+        }
+        
+
+        private ContextMenuStrip CreateContextMenu()
+        {
+            var contextMenu = new ContextMenuStrip();
+            contextMenu.Items.Add("Exit", null, (sender, args) =>
+            {
+                _trayIcon.Visible = false;
+                _trayIcon.Dispose();
+                _trayIcon = null;
+                Application.Current.Shutdown();
+            });
+            return contextMenu;
+        }
+
+        private NotifyIcon CreateTrayIcon(ContextMenuStrip contextMenu)
+        {
+            if (contextMenu == null) throw new NullReferenceException(nameof(contextMenu));
+            
+            var trayIcon = new Icon(GetType(), "Resources.favicon.ico");
+            var trayNotifyIcon = new NotifyIcon
+            {
+                ContextMenuStrip = contextMenu,
+                Visible = false,
+                Text = "Spotilay",
+                Icon = trayIcon
+            };
+            Icon = ToImageSource(trayIcon);
+            return trayNotifyIcon;
+        }
+        private static ImageSource ToImageSource(Icon icon)
+        {            
+            var bitmap = icon.ToBitmap();
+            var hBitmap = bitmap.GetHbitmap();
+
+            ImageSource wpfBitmap = Imaging.CreateBitmapSourceFromHBitmap(
+                hBitmap,
+                IntPtr.Zero,
+                Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
+
+            if (!DllExtern.deleteObject(hBitmap))
+            {
+                throw new Win32Exception();
+            }
+
+            return wpfBitmap;
+        }
+
+        private void Overlay_OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
         }
     }
 }
