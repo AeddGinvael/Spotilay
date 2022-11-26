@@ -1,11 +1,14 @@
 module Tests
 
 open System
+open System.Collections.Generic
 open System.Threading.Tasks
 open ABI.System
+open Spotilay.Lib
 open Windows.Foundation
 open Xunit
 open Windows.Media.Control
+open MediaControlApi
 
 open AudioApi
 
@@ -34,18 +37,27 @@ let ``get media info using transport control`` () = task {
 }
 
 [<Fact>]
+let ``create media control api`` () =
+    let mediaSession = createMediaSession "Spotify.exe"
+    
+    
+    Assert.True(mediaSession |> Option.isSome)
+
+
+
+[<Fact>]
 let ``test`` () = task {
     let getPeriods () =
         let defaultDevice = getDefaultDevice ()
         getRawSessions defaultDevice
-        |> List.filter isFit
-        |> List.map mapSession
-    let mutable periods = []
+        |> Array.filter isFit
+        |> Array.map mapSession
+    let periods = List<SoundSource>()
     for i in 1 .. 10 do
-        periods <- periods @ getPeriods()
+        periods.AddRange(getPeriods())
         do! Task.Delay(TimeSpan.FromSeconds(1))
-    let chromePeriods = periods |> List.filter (fun x -> x.Identifier = "chrome.exe")
-    let window = chromePeriods |> List.windowed 3
+    let chromePeriods = periods |> Seq.filter (fun x -> x.Identifier = "chrome.exe")
+    let window = chromePeriods |> Seq.windowed 3
     Assert.NotEmpty(chromePeriods)
     Assert.True(true)
 }

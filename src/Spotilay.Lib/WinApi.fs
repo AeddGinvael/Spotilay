@@ -206,17 +206,14 @@ module DllExtern =
         let mutable pId = 0u
         GetWindowThreadProcessId(hwnd, &pId) |> ignore
         pId |> int
-    let enumWindowsForSpotify () = async {
+    let enumWindowsForSpotify () = 
        let mutable spotifyHwnd = IntPtr.Zero
        let callback = EnumWindowsProc(fun hwnd lparam ->
             let pId = getWindowProcessId hwnd
             use spotifyProc = Process.GetProcessById(pId)
             
             let isProcSpotify (proc: Process) hwnd =
-                if getWindowText hwnd <> String.Empty && proc.ProcessName = "Spotify" then
-                    true
-                else
-                    false
+                getWindowText hwnd <> String.Empty && proc.ProcessName = "Spotify"
 
             if spotifyProc = null then
                 true
@@ -224,27 +221,28 @@ module DllExtern =
                 spotifyHwnd <- hwnd
                 false
                 
-            else if getProcCount "Spotify" = 0 then
-                false
-            else
-                true
+            else getProcCount "Spotify" <> 0
             )
        EnumWindows(callback, IntPtr.Zero) |> ignore
-       return spotifyHwnd
-    }
+       spotifyHwnd
 
        
-    let getHandle () = async {
-        do! Async.SwitchToThreadPool ()
+    let getHandle () = 
         if getProcCount "Spotify" > 0 then
             let windowHandle = tryFindProc "Spotify"
             let res = match windowHandle with
-                        | Some p -> async { return p.MainWindowHandle } 
+                        | Some p -> p.MainWindowHandle
                         | None -> enumWindowsForSpotify ()
-            return! res
+            res
         else
-            return IntPtr.Zero
-    }
+            IntPtr.Zero
+    
+    let getHandleByProcessId processId =
+        try
+           use winProcess = Process.GetProcessById processId
+           winProcess.MainWindowHandle
+        with
+        | :? Exception -> IntPtr.Zero
 
                         
     let wmAppcommand = 793
@@ -300,7 +298,7 @@ module DllExtern =
             SendMessage(target, wmAppcommand, IntPtr.Zero, IntPtr(up))
             
 module ProcessEvents =
-    
+    open DllExtern
     let watchEventProcess dispatcherOnSpotify =
         let startProcesses = WqlEventQuery("SELECT * FROM __InstanceCreationEvent WITHIN 1
                      WHERE TargetInstance ISA 'Win32_Process'")
@@ -310,15 +308,25 @@ module ProcessEvents =
         let stopWatcher = new ManagementEventWatcher(endProcesses)
         let onProcessSpawned (args: EventArrivedEventArgs) =
             let managementObj = args.NewEvent.Properties["TargetInstance"].Value :?> ManagementBaseObject
-            let procName = managementObj.Properties["Caption"].Value.ToString()
-            if procName = "Spotify.exe" then
-                dispatcherOnSpotify()
+            let cmdLine = match managementObj.Properties["CommandLine"].Value with
+                          | null -> String.Empty
+                          | o -> o.ToString()
+
+            //Spotify creates a few sub processes for utility goals.
+            //We need to watch only for main app process.
+            if cmdLine.TrimEnd().EndsWith("Spotify.exe\"") then
+                let processId = managementObj.Properties["ProcessId"].Value.ToString() |> int
+                let handle = getHandleByProcessId processId
+                dispatcherOnSpotify handle
             
         let onProcessExited (args: EventArrivedEventArgs) =
             let managementObj = args.NewEvent.Properties["TargetInstance"].Value :?> ManagementBaseObject
-            let procName = managementObj.Properties["Caption"].Value.ToString()
-            if procName = "Spotify.exe" then
-                dispatcherOnSpotify()
+            let cmdLine = match managementObj.Properties["CommandLine"].Value with
+                          | null -> String.Empty
+                          | o -> o.ToString()
+                          
+            if cmdLine.TrimEnd().EndsWith("Spotify.exe\"") then
+                dispatcherOnSpotify IntPtr.Zero
         
         startWatcher.EventArrived.Add(onProcessSpawned)
         stopWatcher.EventArrived.Add(onProcessExited)

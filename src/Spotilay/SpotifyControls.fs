@@ -5,13 +5,11 @@ open WinApi
 
 // IntPtr.Zero means spotify does not exist or not found
 let getSpotifyHandle () =
-    async {
-      let! handle = DllExtern.getHandle ()
+      let handle = DllExtern.getHandle ()
       if handle = IntPtr.Zero then
-          return IntPtr.Zero
+          IntPtr.Zero
       else
-          return handle        
-    }
+          handle        
 
 
 let intPtrToBool intPtr =
@@ -39,7 +37,7 @@ let tryPrev hwnd =
 let tryVolumeUp () =
     async {
         do! Async.SwitchToThreadPool()
-        let! handle = getSpotifyHandle()
+        let handle = getSpotifyHandle()
         return handle |> DllExtern.sendVolumeUp |> intPtrToBool
     }
     
@@ -47,7 +45,7 @@ let tryVolumeUp () =
 let tryVolumeDown () =
     async {
         do! Async.SwitchToThreadPool()
-        let! handle = getSpotifyHandle()
+        let handle = getSpotifyHandle()
         return handle |> DllExtern.sendVolumeDown |> intPtrToBool
     }
 

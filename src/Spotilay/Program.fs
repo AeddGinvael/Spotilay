@@ -8,10 +8,13 @@ open Elmish
 open Elmish.WPF
 open Common
 open SpotifyControls
+open Spotilay.Lib
 open WinApi
 
 [<AutoOpen>]
 module Types =
+  
+  open MediaControlApi
   type OverlayMsg =
   | Nothing
   | Stop
@@ -19,10 +22,8 @@ module Types =
   | PrevTrack
   | SetProcTrackPlaying of bool
   | SetTrackName of string
-  | SetTrack
-  | SetTrackPlaying
   | SetSpotifyHandle of IntPtr
-  | CallSpotifyGetHandle 
+  | CallSpotifyGetHandle of IntPtr
   | Fail of exn 
  
   type MainMsg =
@@ -58,6 +59,7 @@ module Types =
       SpotifyHandle : IntPtr
       Tracker       : SoundTracker option
       Config        : Config
+      Controller   : MediaSession
     }
     
     
@@ -76,9 +78,7 @@ module OverlayWindow =
       | PauseCmd of Model
       | SettingsDispatchCmd of Model
       | UpdateAudioSource of (Model * SoundEvent)
-      | SetTrackCmd of Model
-      | SetTrackPlayingCmd of Model
-      | SpotifyHandleCmd of Model
+      | SpotifyHandleCmd of Model * IntPtr
   let init () =
       {
         IsTrackPlaying = false
@@ -93,10 +93,8 @@ module OverlayWindow =
     | NextTrack -> m, [NextCmd m]
     | SetProcTrackPlaying flag -> { m with OverlayState = { m.OverlayState with IsTrackPlaying = flag } }, []
     | SetTrackName name -> { m with OverlayState = { m.OverlayState with CurrTrackName = name} }, []
-    | SetTrack -> m, [SetTrackCmd m]
     | SetSpotifyHandle hwnd -> { m with SpotifyHandle = hwnd }, []
-    | CallSpotifyGetHandle -> m, [SpotifyHandleCmd m]
-    | OverlayMsg.SetTrackPlaying -> m, [SetTrackPlayingCmd m]
+    | CallSpotifyGetHandle handle -> m, [SpotifyHandleCmd (m, handle)]
     | OverlayMsg.Fail _ -> m, []
     
   let bindStopBtn state =
@@ -202,6 +200,7 @@ module OverlayWindow =
        }
       )
 
+  //TODO:: broken
   let settingsDispatch (model: Model) =
     let isSpotifyRunnin = isSpotifyRunning model.SpotifyHandle
     let modelClosedOption =
@@ -212,12 +211,12 @@ module OverlayWindow =
     let update = AllMsg.Update modelClosedOption
     update
    
-  let spotifyHandleHwnd (model: Model) =
+  let spotifyHandleHwnd (handle: IntPtr) (model: Model) =
     Application.Current.Dispatcher.Invoke(fun () ->
       let ctx = SynchronizationContext.Current
       async {
         do! Async.SwitchToContext ctx
-        let! handle = DllExtern.getHandle ()
+        model.Controller.updateState ()
         if handle <> model.SpotifyHandle then
           return AllMsg.Overlay <| OverlayMsg.SetSpotifyHandle handle
         else
@@ -227,14 +226,15 @@ module OverlayWindow =
 
 module App =
   open OverlayWindow
+  open MediaControlApi
 
   let init () =
     { OverlayWindow = WindowState.Closed
       OverlayState = init()
-      SpotifyHandle = IntPtr.Zero
+      SpotifyHandle = getSpotifyHandle ()
       Tracker = None
       Config = { MuteOnSoundSource = [||] }
-       },
+      Controller = MediaSession("Spotify.exe") },
     []
   let updateMain msg m =
     match msg with
@@ -272,29 +272,38 @@ module App =
   | OverlayCmd.PauseCmd            model -> asAsync pause model
   | OverlayCmd.SettingsDispatchCmd model -> updateFunc settingsDispatch model
   | OverlayCmd.UpdateAudioSource   event -> Cmd.OfAsync.either audioSource event id AllMsg.Fail
-  | OverlayCmd.SetTrackCmd         model -> asAsync setTrack model
-  | OverlayCmd.SetTrackPlayingCmd  model -> asAsync setTrackPlaying model
-  | OverlayCmd.SpotifyHandleCmd    model -> asAsync spotifyHandleHwnd model
+  | OverlayCmd.SpotifyHandleCmd    (model, handle) -> asAsync (spotifyHandleHwnd handle) model
   
   
   let settingDispatcher (dispatch : Dispatch<AllMsg>) =
     let settingsDispatch _ = dispatch (AllMsg.Main SettingsDispatch)
     createTimer 2000. [| settingsDispatch |] |> startTimer
   
-  let spotifyStateDispatcher (dispatch : Dispatch<AllMsg>) =
+  let spotifyStateDispatcher (model: Model) (dispatch : Dispatch<AllMsg>) =
 
-    //TODO:: use in one timera
-    let setTrackPlaying _ =
-        let setProcTrack = AllMsg.Overlay OverlayMsg.SetTrackPlaying
-        dispatch setProcTrack
-    let setTrack _ =
-        let setTrack = AllMsg.Overlay OverlayMsg.SetTrack
-        dispatch setTrack
+    let propChanged props =
+      let trackName = formatTrack props.Name props.Artist
+      let setTrackName =
+        match trackName with
+        | "" -> AllMsg.Overlay <| OverlayMsg.SetTrackName unknownTrack
+        | _ -> AllMsg.Overlay <| OverlayMsg.SetTrackName trackName
+      dispatch setTrackName
+      ()
       
-    dispatch (AllMsg.Overlay OverlayMsg.CallSpotifyGetHandle)
-    ProcessEvents.watchEventProcess (fun () -> dispatch (AllMsg.Overlay OverlayMsg.CallSpotifyGetHandle))
+    let timelineChanged props =
+      ()
+      
+    let playbackChanged props =
+      let setProcTrack = AllMsg.Overlay <| OverlayMsg.SetProcTrackPlaying props.IsPlaying
+      dispatch setProcTrack
+      ()
+
+    model.Controller.eventMediaProps.Add propChanged
+    model.Controller.eventMediaTimeline.Add timelineChanged
+    model.Controller.eventPlayback.Add playbackChanged
+    model.Controller.updateState ()
+    ProcessEvents.watchEventProcess (fun handle -> dispatch (AllMsg.Overlay <| OverlayMsg.CallSpotifyGetHandle handle))
     dispatch (AllMsg.Main MainMsg.ShowOverlay)
-    createTimer 1000. [|  setTrackPlaying; setTrack;  |] |> startTimer
     
   
 
@@ -316,7 +325,7 @@ module App =
 
 let dispatchers model _ =
   Cmd.batch [
-    Cmd.ofSub App.spotifyStateDispatcher
+    Cmd.ofSub (App.spotifyStateDispatcher model)
     Cmd.ofSub App.settingDispatcher
     Cmd.ofSub (App.soundSourceDetectDispatcher model)
     ] 
@@ -335,7 +344,7 @@ let main _ =
   
   let config = loadConfig<Config> defaultConfig
   let model, lst = App.init ()
-  let initialModel = {  model with Config = config} 
+  let initialModel = { model with Config = config } 
   let win = Spotilay.Views.Overlay()
   Program.mkProgramWpfWithCmdMsg (fun () -> initialModel, lst) App.update OverlayWindow.bindings App.toCmd
   |> Program.withSubscription (dispatchers initialModel)

@@ -69,25 +69,15 @@ let iterateProc () =
     let proc = Process.GetProcessesByName("Spotify") |> Array.map (fun proc -> DllExtern.getWindowText <| proc.MainWindowHandle)
     proc
     
-//TODO:: use GlobalSystemMediaTransportControlsSessionManager for better track handling
 let isTrackNameValid text =
     not (String.IsNullOrEmpty text) && text <> spotifyPremiumLiteral && text <> spotifyFreeLiteral
  
 let isTrackPlaying hwnd = async {
-//    let! handle = getHandle ()
     match hwnd with
     | h when IntPtr.Zero = h  -> return false
     | h when DllExtern.getWindowText h |> isTrackNameValid -> return true
     | _ -> return false
-    
-//    if handle = IntPtr.Zero then
-//        return false
-//        
-//    let text = getWindowText (handle)
-//    if String.IsNullOrEmpty (text) || text = "Spotify Premium"  then
-//        return false
-//    else
-//        return true
+
     }
 
     
@@ -97,46 +87,21 @@ let unknownTrack = "N\A"
 let sliceSpan (str: ReadOnlySpan<Char>) =
     if str.Length > maxLenOfTrackName then
         let cutOff = str.Slice(0, maxLenOfTrackName - 3)
-        cutOff
+        $"{cutOff.ToString()}..."
     else
-        str
-        
-let cutOffStr (str: String) =
-    if str.Length > maxLenOfTrackName then
-        let cutOff = str.Substring(0, maxLenOfTrackName - 3)
-        sprintf "%s..." cutOff
-    else
-        str
+        str.ToString()
         
 let parseTrackName (str: string) =
     
     if String.IsNullOrEmpty str || str = spotifyPremiumLiteral || str = spotifyFreeLiteral then
         unknownTrack
     else
-        // let arr = str.Split '-'
         let arrSpan = str.AsSpan()
         let pos = arrSpan.IndexOf("-")
         let trackName = arrSpan.Slice(0, pos - 1)
         let trackName' = sliceSpan trackName
         let artistName = arrSpan.Slice(pos + 2, arrSpan.Length - 2 - pos)
         $"%s{trackName'.ToString()}\n%s{artistName.ToString()}" 
-    // if String.IsNullOrEmpty str || str = "Spotify Premium" || str = "Spotify Free" then
-    //     unknownTrack
-    // else
-    //     let arr = str.Split '-'
-    //     sprintf "%s\n%s" (arr[1].Trim() |> cutOffStr) (arr[0].Trim()) 
-// let getCurrentTrackName () =
-//     let unknownTrack = "Unknown Track"
-//     let p = getSpotifyProc()
-//     match p with
-//     | Some proc ->
-//         using proc <| fun p ->
-//             if p.MainWindowTitle = "Spotify Premium" || p.MainWindowTitle = "" then
-//                 unknownTrack
-//             else 
-//                 parseTrackName proc.MainWindowTitle
-//             
-//     | None -> unknownTrack
     
 let getCurrentTrackNameFromNative hwnd =
     async {
@@ -145,4 +110,12 @@ let getCurrentTrackNameFromNative hwnd =
         else
             return String.Empty
     }
+    
+let formatTrack (name: string) (artist: string) =
+    if String.IsNullOrEmpty(name) && String.IsNullOrEmpty(artist) then
+        String.Empty
+    else
+    let nameSpan = name.AsSpan()
+    let trackName = sliceSpan nameSpan 
+    $"{trackName}\n{artist}"
 

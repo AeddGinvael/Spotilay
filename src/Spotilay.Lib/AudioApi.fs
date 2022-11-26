@@ -11,7 +11,7 @@ module AudioApi
     type SoundSource = {
         Identifier      : string
         VolumePeakValue : float<volume>
-        RawVolume       : float
+        RawVolume       : float<volume>
         Pid             : uint
         StartedTime     : DateTime
     }
@@ -27,10 +27,10 @@ module AudioApi
     let getRawSessions (deviceEnum: MMDevice) =
         use device = deviceEnum
         let audioManager = device.AudioSessionManager
-        let mutable sessions = []
+        let sessions = Array.zeroCreate audioManager.Sessions.Count
         for i in 0..audioManager.Sessions.Count - 1 do
             let ses = audioManager.Sessions.[i]
-            sessions <- ses :: sessions 
+            sessions[i] <- ses 
         sessions
         
     let isFit (ctlr : AudioSessionControl) = ctlr.IsSystemSoundsSession <> true && ctlr.GetProcessID <> 0u
@@ -48,14 +48,14 @@ module AudioApi
             let session = {
                 Identifier = id
                 VolumePeakValue = Math.Round(scaled, 2) * 1.<volume>
-                RawVolume = audioCtrl.AudioMeterInformation.MasterPeakValue |> float
+                RawVolume = audioCtrl.AudioMeterInformation.MasterPeakValue |> float |> (*) 1.0<volume>
                 Pid = audioCtrl.GetProcessID
                 StartedTime = DateTime.UtcNow
             }
             session
 
     
-    let filterSessions lst = lst |> List.filter (fun x -> x.RawVolume > 0.000001)
+    let filterSessions lst = lst |> List.filter (fun x -> x.RawVolume > 0.000001<volume>)
     
     type SoundTracker (trackingSession: string[]) =
         
@@ -70,19 +70,20 @@ module AudioApi
         member private this.getSessions () =
             let ses = getRawSessions (getDefaultDevice())
             ses
-            |> List.filter isFit
-            |> List.map mapSession
-            |> List.filter (fun x -> trackingSessionSet.Contains(x.Identifier, StringComparer.CurrentCultureIgnoreCase))
+            |> Array.filter isFit
+            |> Array.map mapSession
+            |> Array.filter (fun x -> trackingSessionSet.Contains(x.Identifier, StringComparer.CurrentCultureIgnoreCase))
 
-        member private this.updateSession (key, lst: SoundSource list) =
+        //TODO concurent dict
+        member private this.updateSession (key, lst: SoundSource array) =
             match sessionsMap.TryGetValue key with
             | true, data -> data.AddRange(lst.ToArray()) 
-            | false, _ -> sessionsMap.Add (key, lst.ToList())
+            | false, _ -> sessionsMap.Add (key, lst.ToList()) //tryAdd
 
         member private this.update () =
             let sessions = this.getSessions ()
-            let groupBySource = sessions |> List.groupBy (fun x -> x.Identifier)
-            groupBySource |> List.iter this.updateSession
+            let groupBySource = sessions |> Array.groupBy (fun x -> x.Identifier)
+            groupBySource |> Array.iter this.updateSession
             
         member private this.isThereActiveSession () =
             let isActiveSession (lst: List<SoundSource>) =

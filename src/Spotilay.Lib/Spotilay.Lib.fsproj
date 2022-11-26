@@ -9,6 +9,7 @@
       <Compile Include="WinApi.fs" />
       <Compile Include="Common.fs" />
       <Compile Include="AudioApi.fs" />
+      <Compile Include="MediaControlApi.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -17,6 +18,8 @@
       <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
       <PackageReference Include="System.Management" Version="7.0.0" />
       <PackageReference Update="FSharp.Core" Version="7.0.0" />
+      <PackageReference Include="WindowsContracts.Net.Foundation.FoundationContract" Version="5.19041.4.1" />
+      <PackageReference Include="WindowsContracts.Net.Foundation.UniversalApiContract" Version="5.19041.10" />
     </ItemGroup>
 
 </Project>
