@@ -55,32 +55,6 @@ let loadDeviceState () =
 let isSpotifyRunning handle =
     handle = IntPtr.Zero |> not
     
-let getSpotifyProc () =
-    let proc = Process.GetProcessesByName("Spotify")
-               
-    let processWithTitle = proc |> Array.tryFind (fun proc -> proc.MainWindowTitle <> "")
-    
-    if processWithTitle = None then
-        proc |> Array.tryHead
-    else
-        processWithTitle
- 
-let iterateProc () =
-    let proc = Process.GetProcessesByName("Spotify") |> Array.map (fun proc -> DllExtern.getWindowText <| proc.MainWindowHandle)
-    proc
-    
-let isTrackNameValid text =
-    not (String.IsNullOrEmpty text) && text <> spotifyPremiumLiteral && text <> spotifyFreeLiteral
- 
-let isTrackPlaying hwnd = async {
-    match hwnd with
-    | h when IntPtr.Zero = h  -> return false
-    | h when DllExtern.getWindowText h |> isTrackNameValid -> return true
-    | _ -> return false
-
-    }
-
-    
 let private maxLenOfTrackName = 24
 let unknownTrack = "N\A"
 
@@ -91,26 +65,7 @@ let sliceSpan (str: ReadOnlySpan<Char>) =
     else
         str.ToString()
         
-let parseTrackName (str: string) =
-    
-    if String.IsNullOrEmpty str || str = spotifyPremiumLiteral || str = spotifyFreeLiteral then
-        unknownTrack
-    else
-        let arrSpan = str.AsSpan()
-        let pos = arrSpan.IndexOf("-")
-        let trackName = arrSpan.Slice(0, pos - 1)
-        let trackName' = sliceSpan trackName
-        let artistName = arrSpan.Slice(pos + 2, arrSpan.Length - 2 - pos)
-        $"%s{trackName'.ToString()}\n%s{artistName.ToString()}" 
-    
-let getCurrentTrackNameFromNative hwnd =
-    async {
-        if hwnd <> IntPtr.Zero then
-            return DllExtern.getWindowText hwnd |> parseTrackName
-        else
-            return String.Empty
-    }
-    
+ 
 let formatTrack (name: string) (artist: string) =
     if String.IsNullOrEmpty(name) && String.IsNullOrEmpty(artist) then
         String.Empty

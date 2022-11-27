@@ -220,8 +220,9 @@ module DllExtern =
             else if isProcSpotify spotifyProc hwnd then
                 spotifyHwnd <- hwnd
                 false
-                
-            else getProcCount "Spotify" <> 0
+            else
+                // getProcCount "Spotify" <> 0
+            true
             )
        EnumWindows(callback, IntPtr.Zero) |> ignore
        spotifyHwnd
@@ -254,14 +255,6 @@ module DllExtern =
     | MediaPrev = 786432
     | VolumeDown = 589824
     | VolumeUp = 655360
-    
-//    PlayPause = 917504,
-//    Mute = 524288,
-//    VolumeDown = 589824,
-//    VolumeUp = 655360,
-//    Stop = 851968,
-//    PreviousTrack = 786432,
-//    NextTrack = 720896
 
     let sendPlayPause target =
         if target = IntPtr.Zero then

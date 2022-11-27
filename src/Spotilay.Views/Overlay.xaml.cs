@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -34,7 +31,6 @@ namespace Spotilay.Views
         public Overlay()
         {
             InitializeComponent();
-            
             Closing += OnWindowClosing;
             MouseLeftButtonDown += OnMouseLeftButtonDown;
             var contextMenu = CreateContextMenu();
@@ -46,7 +42,7 @@ namespace Spotilay.Views
                 NextBtn, StopBtn, PrevBtn, Anchor
             };
 
-
+            
             Show();
         }
 
@@ -54,11 +50,10 @@ namespace Spotilay.Views
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            var hwnd = new WindowInteropHelper(this).Handle;
             var timer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(150)};
             timer.Tick += MouseListenerEvent;
             timer.Start();
-            DllExtern.setWindowExTransparent(hwnd);
+            DllExtern.setWindowExTransparent(new WindowInteropHelper(this).Handle);
         }
         
         private void MouseListenerEvent(object sender, EventArgs e)
@@ -99,15 +94,12 @@ namespace Spotilay.Views
                     if (mouseInControl && _isClickThrough)
                     {
                         _isClickThrough = false;
-                        var hwnd = new WindowInteropHelper(this).Handle;
-                        DllExtern.unsetWindowExTransparent(hwnd);
+                        DllExtern.unsetWindowExTransparent(new WindowInteropHelper(this).Handle);
                     }
                     else if (!mouseInControl && !_isClickThrough)
                     {
                         _isClickThrough = true;
-                        //TODO:: Cache
-                        var hwnd = new WindowInteropHelper(this).Handle;
-                        DllExtern.setWindowExTransparent(hwnd);
+                        DllExtern.setWindowExTransparent(new WindowInteropHelper(this).Handle);
                     }
                 }));
             }
@@ -126,7 +118,7 @@ namespace Spotilay.Views
 
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
-            var handle = new WindowInteropHelper(this).Handle;
+            // var handle = new WindowInteropHelper(this).Handle;
         }
 
         private Point GetMousePosition()
@@ -137,18 +129,17 @@ namespace Spotilay.Views
 
         private void Anchor_OnClick(object sender, RoutedEventArgs e)
         {
-            var hwnd = new WindowInteropHelper(this).Handle;
             
             if (_isDraggable)
             {
                 _isDraggable = false;
                 Cursor = Cursors.Arrow;
                 Anchor.Foreground = Brushes.DimGray;
-                DllExtern.setWindowExTransparent(hwnd);
+                DllExtern.setWindowExTransparent(new WindowInteropHelper(this).Handle);
                 return;
             }
             
-            DllExtern.unsetWindowExTransparent(hwnd);
+            DllExtern.unsetWindowExTransparent(new WindowInteropHelper(this).Handle);
             Cursor = Cursors.Hand;
             _isDraggable = true;
             Anchor.Foreground = new SolidColorBrush(_deepPurple);

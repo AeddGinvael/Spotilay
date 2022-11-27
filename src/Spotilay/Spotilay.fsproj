@@ -5,7 +5,7 @@
 	<UseWPF>true</UseWPF>
 	<UseWindowsForms>true</UseWindowsForms>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-	<OutputType>Exe</OutputType>
+	<OutputType>WinExe</OutputType>
 	<LangVersion>latestmajor</LangVersion>
 <!--    <PublishSingleFile>true</PublishSingleFile>-->
     <SelfContained>true</SelfContained>
