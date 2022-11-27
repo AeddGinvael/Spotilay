@@ -141,31 +141,6 @@ module OverlayWindow =
       }
     )
     
-  let setTrack (model: Model) =
-    Application.Current.Dispatcher.Invoke(fun () ->
-      let ctx = SynchronizationContext.Current
-      async {
-        do! Async.SwitchToContext ctx
-        if model.OverlayState.IsTrackPlaying then
-          let! name = getCurrentTrackNameFromNative model.SpotifyHandle
-          let setTrackName = AllMsg.Overlay <| OverlayMsg.SetTrackName name
-          return setTrackName
-        else
-        return AllMsg.Nothing
-      }
-    )
-
-  let setTrackPlaying (model: Model) =
-    Application.Current.Dispatcher.Invoke(fun () ->
-      let ctx = SynchronizationContext.Current
-      async {
-        do! Async.SwitchToContext ctx
-        let! isPlaying = isTrackPlaying model.SpotifyHandle
-        let setProcTrack = AllMsg.Overlay <| OverlayMsg.SetProcTrackPlaying isPlaying
-        return setProcTrack
-      }
-    )
-    
   let muteSpotify = 
       let mutable muted = false
       
